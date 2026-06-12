@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="BTS Tracker">
+<title>Bodybuilding Transformation Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0d0d0f;
+    --surface: #1a1a1d;
+    --surface2: #232327;
+    --border: #2e2e33;
+    --text: #f2f2f0;
+    --text-secondary: #9a9a9f;
+    --text-tertiary: #6e6e74;
+    --accent: #4f8ef7;
+    --accent-text: #bcd6ff;
+    --danger: #e2504a;
+    --success: #7fc25b;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    padding-bottom: calc(env(safe-area-inset-bottom) + 70px);
+  }
+  #app { max-width: 600px; margin: 0 auto; padding: 1rem 1rem 0; }
+  h1 { font-size: 20px; font-weight: 600; margin: 0.5rem 0 1rem; }
+  h2 { font-size: 16px; font-weight: 600; margin: 0 0 0.5rem; }
+  p { line-height: 1.5; }
+
+  .tabbar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    display: flex; background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding-bottom: env(safe-area-inset-bottom);
+    z-index: 10;
+  }
+  .tabbar button {
+    flex: 1; background: none; border: none; color: var(--text-secondary);
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 10px 0 8px; font-size: 11px; font-family: inherit;
+  }
+  .tabbar button.active { color: var(--accent); }
+  .tabbar svg { width: 22px; height: 22px; }
+
+  .row { display: flex; gap: 10px; margin-bottom: 12px; }
+  .field { flex: 1; }
+  label { font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px; }
+  select, input, textarea, button.action {
+    width: 100%; background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); border-radius: var(--radius-md); padding: 10px 12px;
+    font-size: 15px; font-family: inherit; -webkit-appearance: none; appearance: none;
+  }
+  select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%239a9a9f'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 32px; }
+  textarea { resize: vertical; min-height: 70px; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+
+  .banner {
+    background: var(--surface); border-radius: var(--radius-md);
+    padding: 10px 14px; margin-bottom: 16px; font-size: 13px; color: var(--text-secondary);
+  }
+  .banner strong { color: var(--text); font-weight: 600; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 12px;
+  }
+  .card .ex-name { font-weight: 600; font-size: 15px; margin: 0; }
+  .card .ex-meta { font-size: 13px; color: var(--text-secondary); margin: 2px 0 0; }
+  .card .ex-notes { font-size: 13px; color: var(--text-tertiary); margin: 8px 0 10px; }
+  .card .ex-prev { font-size: 12px; color: var(--accent-text); margin: 0 0 10px; background: var(--surface2); border-radius: var(--radius-md); padding: 6px 10px; display: inline-block; }
+  .card .ex-subs { font-size: 12px; color: var(--text-tertiary); margin: 8px 0 0; }
+  .card .ex-subs span { color: var(--text-secondary); }
+
+  /* Sets table for early/last set tracking */
+  .set-rows { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+  .set-row { display: grid; grid-template-columns: 60px 1fr 1fr 1fr; gap: 6px; align-items: center; }
+  .set-row .set-label { font-size: 12px; color: var(--text-secondary); }
+  .set-row input { padding: 8px 10px; font-size: 14px; }
+  .set-header { display: grid; grid-template-columns: 60px 1fr 1fr 1fr; gap: 6px; margin-bottom: 4px; }
+  .set-header span { font-size: 11px; color: var(--text-tertiary); text-align: center; }
+  .set-header span:first-child { text-align: left; }
+
+  button.action {
+    background: var(--accent); color: #fff; border: none; font-weight: 600;
+    text-align: center; cursor: pointer; margin-bottom: 12px;
+  }
+  button.action:active { opacity: 0.8; }
+  button.action.secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  button.action svg { vertical-align: -3px; margin-right: 6px; width: 16px; height: 16px; }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin-bottom: 16px; }
+  .stat { background: var(--surface); border-radius: var(--radius-md); padding: 12px 14px; }
+  .stat .label { font-size: 12px; color: var(--text-secondary); }
+  .stat .value { font-size: 22px; font-weight: 600; margin-top: 2px; }
+
+  .chart-wrap { position: relative; height: 240px; margin-bottom: 1rem; }
+
+  textarea#ai-output {
+    width: 100%; min-height: 200px; background: var(--surface2);
+    border-radius: var(--radius-md); padding: 12px; font-size: 13px;
+    color: var(--text); border: 1px solid var(--border); white-space: pre-wrap;
+  }
+  .toast {
+    position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+    background: var(--surface2); color: var(--text); padding: 8px 16px;
+    border-radius: var(--radius-md); font-size: 13px; border: 1px solid var(--border);
+    opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 20;
+  }
+  .toast.show { opacity: 1; }
+
+  .view { display: none; }
+  .view.active { display: block; }
+
+  .week-tag {
+    display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px;
+    margin-left: 8px; vertical-align: 1px;
+  }
+  .week-tag.deload { background: var(--surface2); color: var(--text-secondary); }
+  .week-tag.ramp { background: #3a2f1a; color: #f0c060; }
+</style>
+</head>
+<body>
+<div id="app">
+  <h1>BTS beginner tracker</h1>
+
+  <!-- LOG VIEW -->
+  <div class="view active" id="view-log">
+    <div class="row">
+      <div class="field">
+        <label for="week-select">Week</label>
+        <select id="week-select"></select>
+      </div>
+      <div class="field" style="flex: 2;">
+        <label for="day-select">Workout day</label>
+        <select id="day-select"></select>
+      </div>
+    </div>
+    <div class="banner" id="week-banner"></div>
+    <div id="exercise-list"></div>
+    <h2 style="margin-top: 1.5rem;">Session notes</h2>
+    <textarea id="session-notes" placeholder="How did the session feel overall? Energy, sleep, soreness, etc."></textarea>
+  </div>
+
+  <!-- PROGRESS VIEW -->
+  <div class="view" id="view-progress">
+    <h1>Progress</h1>
+    <div id="progress-empty" class="banner" style="display:none;">Log weights for tracked lifts on the Log tab to see your progress chart here.</div>
+    <div class="chart-wrap" id="chart-wrap" style="display:none;">
+      <canvas id="progress-chart"></canvas>
+    </div>
+    <div class="banner" style="margin-top: 0;">
+      Tracking: 45° Incline Press, Smith Machine Squat / Static Lunge, Barbell Bench Press / Machine Chest Press, Leg Press / Hack Squat
+    </div>
+  </div>
+
+  <!-- AI VIEW -->
+  <div class="view" id="view-ai">
+    <h1>AI coach</h1>
+    <p style="font-size:14px; color: var(--text-secondary);">
+      Copy your logged training data, then paste it into a Claude chat to get personalized suggestions for your next sessions (load, reps, RPE adjustments).
+    </p>
+    <button class="action" id="copy-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+      Copy training data
+    </button>
+    <textarea id="ai-output" readonly></textarea>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="tabbar">
+  <button class="tab-btn active" data-view="log">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    Log
+  </button>
+  <button class="tab-btn" data-view="progress">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+    Progress
+  </button>
+  <button class="tab-btn" data-view="ai">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 00-4 12.7V17h8v-2.3A7 7 0 0012 2z"/></svg>
+    AI coach
+  </button>
+</div>
+
+<script>
+// ---------------- PROGRAM DATA ----------------
+const DAY_ORDER = [
+  'Upper (Strength Focus)',
+  'Lower (Strength Focus)',
+  'Pull (Hypertrophy Focus)',
+  'Push (Hypertrophy Focus)',
+  'Legs (Hypertrophy Focus)',
+];
+
+const TOTAL_WEEKS = 12;
+
+// Exercise definitions per day, including substitution options and notes.
+// Working sets / reps vary by week-block, captured via WEEK_INFO + per-exercise hints.
+const PROGRAM_DAYS = {
+  'Upper (Strength Focus)': [
+    { name: '45° Incline Barbell Press', sets: '1-2', reps: '6-8', sub1: '45° Incline DB Press', sub2: '45° Incline Machine Press', notes: '1 second pause at the bottom of each rep while maintaining tension on the pecs. From week 6, switches to DB variation.' },
+    { name: 'Cable Crossover Ladder', sets: '1-2', reps: '8-10', sub1: 'Pec Deck', sub2: 'Bottom-Half DB Flye', notes: 'One set low cable, one medium, one high position (or your preferred 1-2 positions). From week 6, becomes Pec Deck.' },
+    { name: 'Wide-Grip Pull-Up', sets: '1-2', reps: '8-10', sub1: 'Wide-Grip Lat Pulldown', sub2: 'Dual-Handle Lat Pulldown', notes: '1.5x shoulder width overhand grip. Slow 2-3s negative, feel lats pulling apart. From week 6, becomes Dual-Handle Lat Pulldown / Lean-Back Lat Pulldown.' },
+    { name: 'High-Cable Lateral Raise', sets: '1-2', reps: '8-10', sub1: 'High-Cable Cuffed Lateral Raise', sub2: 'Lean-In DB Lateral Raise', notes: 'Squeeze the lateral delt to move the weight. Later weeks taken to failure.' },
+    { name: 'Pendlay Deficit Row', sets: '1-2', reps: '6-8', sub1: 'Smith Machine Row', sub2: 'Single-Arm DB Row', notes: 'Stand on a bumper plate, big stretch, touch stomach/chest each rep. From week 6, becomes Smith Machine Row.' },
+    { name: 'Overhead Cable Triceps Extension (Bar)', sets: '1', reps: '8-10', sub1: 'Overhead Cable Triceps Extension (Rope)', sub2: 'DB Skull Crusher', notes: 'Optional 0.5-1s pause in the stretch.' },
+    { name: 'Bayesian Cable Curl', sets: '1', reps: '8-10', sub1: 'Seated Super-Bayesian High Cable Curl', sub2: 'Incline DB Stretch Curl', notes: 'If you have a size imbalance, do 1 arm at a time starting with the weaker arm; match reps on the other side.' },
+  ],
+  'Lower (Strength Focus)': [
+    { name: 'Lying Leg Curl', sets: '2', reps: '8-10', sub1: 'Seated Leg Curl', sub2: 'Nordic Ham Curl', notes: 'Set machine for biggest stretch at the bottom. Prevent butt popping up as you curl.' },
+    { name: 'Smith Machine Squat', sets: '2-4', reps: '6-8', sub1: 'DB Bulgarian Split Squat', sub2: 'High-Bar Back Squat', notes: 'Bring feet forward ~3-6 inches under the bar for a more upright, quad-focused squat. From week 6 becomes Smith Machine Static Lunge w/ Elevated Front Foot.' },
+    { name: 'Barbell RDL', sets: '2-4', reps: '6-8', sub1: 'DB RDL', sub2: 'Snatch-Grip RDL', notes: 'Stop ~75% of the way to lockout to keep tension on hamstrings. From week 6 becomes 45° Hyperextension.' },
+    { name: 'Leg Extension', sets: '1-2', reps: '8-10', sub1: 'Reverse Nordic', sub2: 'Sissy Squat', notes: 'Set seat back as far as comfortable, grab handles hard, 2-3s negative.' },
+    { name: 'Standing Calf Raise', sets: '1-2', reps: '6-8', sub1: 'Seated Calf Raise', sub2: 'Leg Press Calf Press', notes: '1-2s pause at the bottom; roll ankle back and forth on the balls of your feet. From week 6 becomes Leg Press Calf Press.' },
+    { name: 'Cable Crunch', sets: '1', reps: '8-10', sub1: 'Decline Weighted Crunch', sub2: 'Machine Crunch', notes: 'Round your lower back as you crunch, mind-muscle connection with abs. From week 6 becomes Machine Crunch.' },
+  ],
+  'Pull (Hypertrophy Focus)': [
+    { name: 'Neutral-Grip Lat Pulldown', sets: '2-3', reps: '8-10', sub1: 'Neutral-Grip Pull-Up', sub2: 'Dual-Handle Lat Pulldown', notes: 'Pull more out in front of you, cross between pullover and pulldown. From week 6 becomes Lean-Back Lat Pulldown.' },
+    { name: 'Chest-Supported Machine Row', sets: '2-3', reps: '8-10', sub1: 'Chest-Supported T-Bar Row', sub2: 'Incline Chest-Supported DB Row', notes: 'Flare elbows ~45°, squeeze shoulder blades hard at the top. From week 6 becomes Chest-Supported T-Bar Row.' },
+    { name: '1-Arm 45° Cable Rear Delt Flye', sets: '1-2', reps: '10-12', sub1: 'Rope Face Pull', sub2: 'Reverse Pec Deck', notes: 'Pause 1-2s in the squeeze, contract rear delts hard.' },
+    { name: 'Machine Shrug', sets: '2-3', reps: '10-12', sub1: 'Cable Paused Shrug-In', sub2: 'DB Shrug', notes: 'Brief pause top and bottom. From week 6 becomes Cable Paused Shrug-In.' },
+    { name: 'EZ-Bar Cable Curl', sets: '1', reps: '10-12', sub1: 'EZ-Bar Curl', sub2: 'DB Curl', notes: 'Cable at lowest position, constant tension, slow controlled reps. From week 6 becomes Cable Rope Hammer Curl.' },
+    { name: 'Machine Preacher Curl', sets: '1', reps: '12-15', sub1: 'EZ-Bar Preacher Curl', sub2: 'DB Preacher Curl', notes: 'Smooth controlled reps, mind-muscle connection. From week 6 becomes DB Concentration Curl.' },
+  ],
+  'Push (Hypertrophy Focus)': [
+    { name: 'Barbell Bench Press', sets: '2-4', reps: '8-10', sub1: 'Machine Chest Press', sub2: 'DB Bench Press', notes: 'Comfortable arch, quick pause on chest, explode up. From week 6 becomes Machine Chest Press.' },
+    { name: 'Machine Shoulder Press', sets: '2-3', reps: '8-10', sub1: 'Cable Shoulder Press', sub2: 'Seated DB Shoulder Press', notes: 'Elbows break at least 90°, mind-muscle with delts. From week 6 becomes Seated DB Shoulder Press.' },
+    { name: 'Bottom-Half DB Flye', sets: '1-2', reps: '10-12', sub1: 'Bottom-Half Seated Cable Flye', sub2: 'Low-to-High Cable Crossover', notes: 'All reps in bottom half of ROM, deep stretch at the bottom. From week 6 becomes Bottom-Half Seated Cable Flye.' },
+    { name: 'High-Cable Lateral Raise', sets: '1', reps: '10-12', sub1: 'High-Cable Cuffed Lateral Raise', sub2: 'Lean-In DB Lateral Raise', notes: 'Squeeze the lateral delt. Later weeks taken to failure.' },
+    { name: 'Overhead Cable Triceps Extension (Bar)', sets: '1', reps: '10-12', sub1: 'Overhead Cable Triceps Extension (Rope)', sub2: 'DB Skull Crusher', notes: 'Optional 0.5-1s pause in the stretch. From week 6 becomes EZ-Bar Skull Crusher.' },
+    { name: 'Cable Triceps Kickback', sets: '1', reps: '12-15', sub1: 'DB Triceps Kickback', sub2: 'Bench Dip', notes: 'Shoulder positioned behind torso in the full squeeze. From week 6 becomes Triceps Pressdown (Bar).' },
+    { name: 'Lying Leg Raise', sets: '1-2', reps: '10-20', sub1: 'Hanging Leg Raise', sub2: 'Modified Candlestick', notes: 'Slow reps, keep lower back against the ground. From week 6 becomes Ab Wheel Rollout.' },
+  ],
+  'Legs (Hypertrophy Focus)': [
+    { name: 'Leg Press', sets: '2-4', reps: '8-10', sub1: 'Smith Machine Static Lunge', sub2: 'DB Walking Lunge', notes: 'Feet lower for more quad focus, control negative with slight pause at bottom. From week 6 becomes Hack Squat.' },
+    { name: 'Seated Leg Curl', sets: '1-2', reps: '10-12', sub1: 'Lying Leg Curl', sub2: 'Nordic Ham Curl', notes: 'Lean forward over the machine for maximum hamstring stretch.' },
+    { name: 'Walking Lunge', sets: '2-3', reps: '8-10', sub1: 'DB Step-Up', sub2: 'Goblet Squat', notes: 'Medium strides, minimize back leg contribution.' },
+    { name: 'Machine Hip Abduction', sets: '1-2', reps: '10-12', sub1: 'Cable Hip Abduction', sub2: 'Lateral Band Walk', notes: 'Use pads for more ROM if available; lean forward, grab rails, stretch glutes.' },
+    { name: 'Standing Calf Raise', sets: '1-2', reps: '10-12', sub1: 'Seated Calf Raise', sub2: 'Leg Press Calf Press', notes: '1-2s pause at the bottom; roll ankle on the balls of your feet.' },
+  ],
+};
+
+// Block-level guidance per week
+const WEEK_INFO = {
+  1: { block: 'Foundation Block', tag: '', hint: 'Week 1: Intro/deload week. Most sets to RPE ~6-7 (leave 3-4 reps in the tank). Only 1 working set per exercise (Last Set RPE only). Focus on mastering technique — volume and intensity are intentionally low.' },
+  2: { block: 'Foundation Block', tag: '', hint: 'Week 2: Still 1 working set per exercise. Last Set RPE rises to ~7-8. Intensity increases from week 1 but technique remains the priority.' },
+  3: { block: 'Foundation Block', tag: '', hint: 'Week 3: 2 working sets per exercise begin. Early Set RPE ~7, Last Set RPE ~7-8. Build on week 1-2 loads with the extra set.' },
+  4: { block: 'Foundation Block', tag: '', hint: 'Week 4: 2 working sets, Early ~7 / Last ~7. Continue progressing load or reps within the prescribed range from week 3.' },
+  5: { block: 'Foundation Block', tag: '', hint: 'Week 5: 2 working sets, Early ~7 / Last ~7-8. Final week of the Foundation Block before exercise variations shift in week 6.' },
+  6: { block: 'Ramping Block', tag: 'ramp', hint: 'Week 6: Ramping Block begins — many exercises swap to new variations (see substitution notes on each card). Sets/reps reset to 1-2 sets per exercise at slightly higher rep ranges (10-15). Early sets ~6, Last set ~7.' },
+  7: { block: 'Ramping Block', tag: 'ramp', hint: "Week 7: Sets increase to 2-3 per exercise. Last sets on several isolation movements are now taken to failure (RPE 10) — check each card's \"Last-Set Intensity\" cue. Early ~7-8 / Last ~7-8 (or to failure where noted)." },
+  8: { block: 'Ramping Block', tag: 'ramp', hint: 'Week 8: Continue the week 7 structure — 2-3 sets, isolation work to failure on last sets. Aim to add load or reps versus week 7 on every exercise.' },
+  9: { block: 'Ramping Block', tag: 'ramp', hint: 'Week 9: Same structure as weeks 7-8. Push for incremental progress — small load/rep increases on compounds, continued failure sets on isolation work.' },
+  10: { block: 'Ramping Block', tag: 'ramp', hint: 'Week 10: Continue progressing. This is near the end of the program — keep pushing intensity on failure sets while maintaining good technique.' },
+  11: { block: 'Ramping Block', tag: 'ramp', hint: 'Week 11: Final ramping week before the program concludes. Push for new bests where recovery allows; the PDF leaves loads blank for you to fill in based on your week 10 performance.' },
+  12: { block: 'Ramping Block', tag: 'ramp', hint: 'Week 12: Final week of the program. Same structure as weeks 7-11 — use this week to test new personal bests on key lifts before transitioning to your next program.' },
+};
+
+// Lifts tracked for the progress chart (using representative exercise names per week range)
+const PROGRESS_LIFTS = [
+  { label: 'Incline press', match: ['45° Incline Barbell Press', '45° Incline DB Press'], color: '#4f8ef7' },
+  { label: 'Squat/lunge', match: ['Smith Machine Squat', 'Smith Machine Static Lunge w/ Elevated Front Foot'], color: '#7fc25b' },
+  { label: 'Bench/chest press', match: ['Barbell Bench Press', 'Machine Chest Press'], color: '#e2796a' },
+  { label: 'Leg press/hack squat', match: ['Leg Press', 'Hack Squat'], color: '#b08ef0' },
+];
+
+// ---------------- STORAGE ----------------
+const LOGS_KEY = 'bts-beginner-logs-v1';
+const NOTES_KEY = 'bts-beginner-notes-v1';
+
+function loadLogs() {
+  try { return JSON.parse(localStorage.getItem(LOGS_KEY)) || {}; } catch { return {}; }
+}
+function saveLogs(logs) {
+  localStorage.setItem(LOGS_KEY, JSON.stringify(logs));
+}
+function loadNotes() {
+  try { return JSON.parse(localStorage.getItem(NOTES_KEY)) || {}; } catch { return {}; }
+}
+function saveNotes(notes) {
+  localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
+}
+
+let logs = loadLogs();
+let notes = loadNotes();
+
+// ---------------- STATE ----------------
+let selectedWeek = 1;
+let selectedDay = DAY_ORDER[0];
+let chartInstance = null;
+
+// ---------------- INIT ----------------
+function init() {
+  const weekSelect = document.getElementById('week-select');
+  for (let w = 1; w <= TOTAL_WEEKS; w++) {
+    const opt = document.createElement('option');
+    opt.value = w; opt.textContent = 'Week ' + w;
+    weekSelect.appendChild(opt);
+  }
+  const daySelect = document.getElementById('day-select');
+  DAY_ORDER.forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d; opt.textContent = d;
+    daySelect.appendChild(opt);
+  });
+
+  weekSelect.addEventListener('change', e => { selectedWeek = Number(e.target.value); renderLog(); });
+  daySelect.addEventListener('change', e => { selectedDay = e.target.value; renderLog(); });
+
+  document.getElementById('session-notes').addEventListener('input', e => {
+    const key = dayKey();
+    notes[key] = e.target.value;
+    saveNotes(notes);
+  });
+
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchView(btn.dataset.view));
+  });
+
+  document.getElementById('copy-btn').addEventListener('click', copyTrainingData);
+
+  renderLog();
+  renderProgress();
+}
+
+function dayKey() {
+  return selectedWeek + '_' + selectedDay;
+}
+
+function getPreviousEntry(exerciseName, field) {
+  for (let w = selectedWeek - 1; w >= 1; w--) {
+    const key = w + '_' + selectedDay;
+    const dayLogs = logs[key];
+    if (dayLogs && dayLogs[exerciseName]) {
+      const entry = dayLogs[exerciseName];
+      if (entry.sets && entry.sets.some(s => s.weight || s.reps)) {
+        return { week: w, entry };
+      }
+    }
+  }
+  return null;
+}
+
+function summarizeSets(entrySets) {
+  if (!entrySets) return '';
+  const parts = entrySets
+    .filter(s => s.weight || s.reps)
+    .map(s => {
+      const bits = [];
+      if (s.weight) bits.push(s.weight + ' lbs');
+      if (s.reps) bits.push(s.reps + ' reps');
+      return bits.join(' x ');
+    });
+  return parts.join(', ');
+}
+
+// ---------------- LOG VIEW ----------------
+function renderLog() {
+  const plan = PROGRAM_DAYS[selectedDay];
+  const info = WEEK_INFO[selectedWeek];
+  const banner = document.getElementById('week-banner');
+  let tagHtml = '';
+  if (info.tag === 'deload') tagHtml = '<span class="week-tag deload">Deload</span>';
+  if (info.tag === 'ramp') tagHtml = '<span class="week-tag ramp">Ramping block</span>';
+  banner.innerHTML = '<strong>' + info.block + '</strong>' + tagHtml + '<div style="margin-top:4px;">' + info.hint + '</div>';
+
+  const list = document.getElementById('exercise-list');
+  list.innerHTML = '';
+  const key = dayKey();
+  const dayLogs = logs[key] || {};
+  const numSets = 4; // up to 4 sets tracked per exercise
+
+  plan.forEach((ex) => {
+    let entry = dayLogs[ex.name];
+    if (!entry) entry = { sets: [] };
+    if (!entry.sets) entry.sets = [];
+
+    const prev = getPreviousEntry(ex.name);
+    let prevHtml = '';
+    if (prev) {
+      const summary = summarizeSets(prev.entry.sets);
+      if (summary) prevHtml = `<p class="ex-prev">Week ${prev.week}: ${escapeHtml(summary)}</p>`;
+    }
+
+    const card = document.createElement('div');
+    card.className = 'card';
+
+    let setRowsHtml = '<div class="set-header"><span>Set</span><span>Weight</span><span>Reps</span><span>RPE</span></div>';
+    let setRows = '<div class="set-rows">';
+    for (let i = 0; i < numSets; i++) {
+      const s = entry.sets[i] || {};
+      setRows += `
+        <div class="set-row">
+          <span class="set-label">Set ${i + 1}</span>
+          <input type="number" inputmode="decimal" placeholder="lbs" data-set="${i}" data-field="weight" value="${s.weight ? escapeHtml(s.weight) : ''}">
+          <input type="text" placeholder="reps" data-set="${i}" data-field="reps" value="${s.reps ? escapeHtml(s.reps) : ''}">
+          <input type="text" placeholder="RPE" data-set="${i}" data-field="rpe" value="${s.rpe ? escapeHtml(s.rpe) : ''}">
+        </div>`;
+    }
+    setRows += '</div>';
+
+    card.innerHTML = `
+      <p class="ex-name">${escapeHtml(ex.name)}</p>
+      <p class="ex-meta">${escapeHtml(ex.sets)} working sets x ${escapeHtml(ex.reps)} reps</p>
+      <p class="ex-notes">${escapeHtml(ex.notes)}</p>
+      ${prevHtml}
+      ${setRowsHtml}
+      ${setRows}
+      <p class="ex-subs">Substitutions: <span>${escapeHtml(ex.sub1)}</span>, <span>${escapeHtml(ex.sub2)}</span></p>
+      <div style="margin-top: 10px;">
+        <label>Exercise notes</label>
+        <input type="text" placeholder="substitutions used, how it felt..." data-field="notes" value="${entry.notes ? escapeHtml(entry.notes) : ''}">
+      </div>
+    `;
+
+    card.querySelectorAll('.set-row input').forEach(input => {
+      input.addEventListener('input', e => {
+        const setIdx = Number(e.target.dataset.set);
+        const field = e.target.dataset.field;
+        const val = e.target.value;
+        if (!logs[key]) logs[key] = {};
+        if (!logs[key][ex.name]) logs[key][ex.name] = { sets: [] };
+        if (!logs[key][ex.name].sets[setIdx]) logs[key][ex.name].sets[setIdx] = {};
+        logs[key][ex.name].sets[setIdx][field] = val;
+        saveLogs(logs);
+        if (field === 'weight') renderProgress();
+      });
+    });
+
+    const notesInput = card.querySelector('input[data-field="notes"]');
+    notesInput.addEventListener('input', e => {
+      if (!logs[key]) logs[key] = {};
+      if (!logs[key][ex.name]) logs[key][ex.name] = { sets: [] };
+      logs[key][ex.name].notes = e.target.value;
+      saveLogs(logs);
+    });
+
+    list.appendChild(card);
+  });
+
+  document.getElementById('session-notes').value = notes[key] || '';
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ---------------- PROGRESS VIEW ----------------
+function renderProgress() {
+  const rows = [];
+  for (let w = 1; w <= TOTAL_WEEKS; w++) {
+    const row = { week: 'W' + w };
+    let hasData = false;
+    DAY_ORDER.forEach(day => {
+      const key = w + '_' + day;
+      const dayLogs = logs[key];
+      if (!dayLogs) return;
+      PROGRESS_LIFTS.forEach(lift => {
+        lift.match.forEach(exName => {
+          const entry = dayLogs[exName];
+          if (entry && entry.sets) {
+            const weights = entry.sets.map(s => s && s.weight ? parseFloat(s.weight) : null).filter(v => v !== null && !isNaN(v));
+            if (weights.length > 0) {
+              const maxW = Math.max(...weights);
+              if (row[lift.label] === undefined || maxW > row[lift.label]) {
+                row[lift.label] = maxW;
+                hasData = true;
+              }
+            }
+          }
+        });
+      });
+    });
+    if (hasData) rows.push(row);
+  }
+
+  const empty = document.getElementById('progress-empty');
+  const wrap = document.getElementById('chart-wrap');
+
+  if (rows.length === 0) {
+    empty.style.display = 'block';
+    wrap.style.display = 'none';
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+    return;
+  }
+  empty.style.display = 'none';
+  wrap.style.display = 'block';
+
+  const labels = rows.map(r => r.week);
+  const datasets = PROGRESS_LIFTS.map(lift => ({
+    label: lift.label,
+    data: rows.map(r => r[lift.label] !== undefined ? r[lift.label] : null),
+    borderColor: lift.color,
+    backgroundColor: lift.color,
+    spanGaps: true,
+    tension: 0.2,
+    pointRadius: 3,
+  }));
+
+  if (chartInstance) chartInstance.destroy();
+  const ctx = document.getElementById('progress-chart').getContext('2d');
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#f2f2f0', font: { size: 11 } } },
+      },
+      scales: {
+        x: { ticks: { color: '#9a9a9f' }, grid: { color: '#2e2e33' } },
+        y: { ticks: { color: '#9a9a9f' }, grid: { color: '#2e2e33' } },
+      },
+    },
+  });
+}
+
+// ---------------- AI COPY ----------------
+function copyTrainingData() {
+  const lines = [];
+  for (let w = TOTAL_WEEKS; w >= 1; w--) {
+    DAY_ORDER.forEach(day => {
+      const key = w + '_' + day;
+      const dayLogs = logs[key];
+      if (!dayLogs) return;
+      const note = notes[key];
+      const dayLines = [];
+      Object.entries(dayLogs).forEach(([exName, entry]) => {
+        if (!entry || !entry.sets) return;
+        const summary = summarizeSets(entry.sets);
+        if (!summary && !entry.notes) return;
+        dayLines.push('  ' + exName + ': ' + (summary || '-') + (entry.notes ? ' | notes: ' + entry.notes : ''));
+      });
+      if (dayLines.length > 0) {
+        lines.push('Week ' + w + ' - ' + day + (note ? ' (session notes: ' + note + ')' : ''));
+        lines.push(...dayLines);
+      }
+    });
+  }
+  const header = "Here is my logged training data from Jeff Nippard's Bodybuilding Transformation System (Beginner) program (most recent first). Based on weight, reps, RPE trends and notes, suggest load/rep/RPE adjustments for my next session of each exercise:\\n\\n";
+  const text = header + (lines.length > 0 ? lines.join('\\n') : 'No logged data yet.');
+
+  document.getElementById('ai-output').value = text;
+
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => showToast('Copied! Paste into a Claude chat.'))
+      .catch(() => showToast('Copy failed — select the text below manually.'));
+  } else {
+    showToast('Select the text below and copy manually.');
+  }
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+// ---------------- VIEW SWITCHING ----------------
+function switchView(view) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-' + view).classList.add('active');
+  document.querySelector(`.tab-btn[data-view="${view}"]`).classList.add('active');
+  if (view === 'progress') renderProgress();
+}
+
+init();
+</script>
+</body>
+</html>
